@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medical Receipt Scanner - Fixed</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 2rem;
+      }
+
+      .container {
+        max-width: 1600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .header p {
+        opacity: 0.9;
+      }
+
+      .content {
+        padding: 2rem;
+      }
+
+      /* Configuration */
+      .config-section {
+        background: #f8f9ff;
+        border: 1px solid #e0e6ff;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: none;
+      }
+
+      .config-section h3 {
+        color: #667eea;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+      }
+
+      .config-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .config-item label {
+        font-weight: 600;
+        color: #333;
+        min-width: 120px;
+      }
+
+      .config-item input[type="url"] {
+        flex: 1;
+        min-width: 300px;
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: border-color 0.3s ease;
+      }
+
+      .config-item input[type="url"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      /* Upload Section */
+      .upload-section {
+        border: 3px dashed #667eea;
+        border-radius: 15px;
+        padding: 3rem;
+        text-align: center;
+        background: #f8f9ff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+      }
+
+      .upload-section:hover {
+        background: #f0f2ff;
+        border-color: #764ba2;
+      }
+
+      .upload-section.dragover {
+        background: #e8ebff;
+        border-color: #764ba2;
+        transform: scale(1.02);
+      }
+
+      #fileInput {
+        display: none;
+      }
+
+      .upload-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+      }
+
+      /* Queue Section */
+      .queue-section {
+        margin: 2rem 0;
+        display: none;
+      }
+
+      .queue-section.active {
+        display: block;
+      }
+
+      .queue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e0e6ff;
+      }
+
+      .queue-header h3 {
+        color: #667eea;
+        font-size: 1.4rem;
+      }
+
+      .queue-stats {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .queue-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        background: #f8f9ff;
+        border-radius: 10px;
+        min-width: 100px;
+      }
+
+      .queue-stat .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #667eea;
+      }
+
+      .queue-stat .label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+      }
+
+      /* File Cards Grid */
+      .file-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .file-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .file-card:hover {
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .file-card.processing {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .file-card.completed {
+        border-color: #2ecc71;
+        box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1);
+      }
+
+      .file-card.error {
+        border-color: #ff4757;
+        box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+      }
+
+      /* Card Header */
+      .file-card-header {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8f9ff;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .file-card-preview {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        flex-shrink: 0;
+      }
+
+      .file-card-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      .file-card-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.95rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .file-card-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-badge.pending {
+        background: #ffeaa7;
+        color: #d63031;
+      }
+
+      .status-badge.uploading {
+        background: #74b9ff;
+        color: #0984e3;
+      }
+
+      .status-badge.processing {
+        background: #a29bfe;
+        color: #6c5ce7;
+      }
+
+      .status-badge.completed {
+        background: #55efc4;
+        color: #00b894;
+      }
+
+      .status-badge.error {
+        background: #fab1a0;
+        color: #d63031;
+      }
+
+      .status-message {
+        font-size: 0.85rem;
+        color: #666;
+      }
+
+      .file-card-timer {
+        font-size: 0.8rem;
+        color: #999;
+        font-family: "Courier New", monospace;
+      }
+
+      /* Progress Bar */
+      .file-card-progress {
+        padding: 1rem;
+        background: white;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.3s ease;
+        border-radius: 3px;
+      }
+
+      .progress-fill.indeterminate {
+        width: 40%;
+        animation: indeterminate 1.5s ease-in-out infinite;
+      }
+
+      @keyframes indeterminate {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(350%);
+        }
+      }
+
+      .progress-text {
+        font-size: 0.85rem;
+        color: #666;
+        text-align: center;
+      }
+
+      /* Results in Card */
+      .file-card-result {
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        background: #fafbff;
+        display: none;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .file-card-result.active {
+        display: block;
+      }
+
+      .result-table {
+        width: 100%;
+        font-size: 0.85rem;
+      }
+
+      .result-table th {
+        text-align: left;
+        padding: 0.5rem;
+        background: #667eea;
+        color: white;
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+
+      .result-table td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #e0e0e0;
+        word-break: break-word;
+      }
+
+      .result-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .result-table tr:hover {
+        background: #f8f9ff;
+      }
+
+      .no-results {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+        font-style: italic;
+      }
+
+      /* Per-card tools */
+      .card-tools {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .btn-download-card {
+        background: #2ecc71;
+        color: white;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+      }
+
+      .btn-download-card:hover {
+        background: #27ae60;
+      }
+
+      /* Buttons */
+      .button-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+      }
+
+      button {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .btn-process {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-process:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-process:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-clear {
+        background: #f1f1f1;
+        color: #333;
+      }
+
+      .btn-clear:hover {
+        background: #e0e0e0;
+      }
+
+      .btn-download-all {
+        background: #2ecc71;
+        color: white;
+        display: none;
+      }
+
+      .btn-download-all.active {
+        display: inline-block;
+      }
+
+      .btn-download-all:hover {
+        background: #27ae60;
+      }
+
+      /* Summary Section */
+      .summary-section {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+        display: none;
+      }
+
+      .summary-section.active {
+        display: block;
+      }
+
+      .summary-section h3 {
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+      }
+
+      .summary-card {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+      }
+
+      .summary-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+      }
+
+      .summary-card .label {
+        opacity: 0.9;
+        font-size: 0.85rem;
+      }
+
+      /* Error Message */
+      .error {
+        background: #ff4757;
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        display: none;
+      }
+
+      .error.active {
+        display: block;
+      }
+
+      /* Debug Panel removed */
+
+      /* Spinner */
+      .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .file-cards {
+          grid-template-columns: 1fr;
+        }
+
+        .queue-stats {
+          flex-wrap: wrap;
+        }
+
+        .config-item {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .config-item label {
+          min-width: auto;
+        }
+      }
+
+      /* Scrollbar styling */
+      .file-card-result::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .file-card-result::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      .file-card-result::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🏥 Medical Receipt Scanner</h1>
+        <p>⚡ Fixed Version - Immediate Response Detection</p>
+      </div>
+
+      <div class="content">
+        <div class="config-section">
+          <h3>⚙️ Configuration</h3>
+          <div class="config-item">
+            <label for="webhookUrl">N8N Start URL:</label>
+            <input
+              type="url"
+              id="webhookUrl"
+              placeholder="https://n8n-nick.abapi.dev/webhook/medical-start"
+              value=""
+            />
+          </div>
+          <div class="config-item" style="margin-top: 0.75rem">
+            <label for="statusUrl">N8N Status URL (optional):</label>
+            <input
+              type="url"
+              id="statusUrl"
+              placeholder="https://n8n-nick.abapi.dev/webhook/medical-status"
+              value=""
+            />
+          </div>
+        </div>
+
+        <div class="upload-section" id="uploadZone">
+          <div class="upload-icon">📤</div>
+          <h3>Click to upload or drag and drop</h3>
+          <p>Supports: JPG, PNG, JPEG (multiple files allowed)</p>
+          <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem">
+            🔧 <strong>Fixed:</strong> Improved result parsing + Faster status detection
+          </p>
+          <input type="file" id="fileInput" accept="image/*" multiple />
+        </div>
+
+        <div class="button-group">
+          <button class="btn-process" id="processBtn" disabled>
+            🚀 Start Processing (<span id="fileCountBtn">0</span> files)
+          </button>
+          <button class="btn-clear" id="clearBtn">🗑️ Clear All</button>
+          <button class="btn-download-all" id="downloadAllBtn">
+            📥 Download All Results (Excel)
+          </button>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="queue-section" id="queueSection">
+          <div class="queue-header">
+            <h3>📊 Processing Status</h3>
+            <div class="queue-stats">
+              <div class="queue-stat">
+                <div class="value" id="statTotal">0</div>
+                <div class="label">Total</div>
+              </div>
+              <div class="queue-stat">
+                <div class="value" id="statProcessing">0</div>
+                <div class="label">Processing</div>
+              </div>
+              <div class="queue-stat">
+                <div class="value" id="statCompleted">0</div>
+                <div class="label">Completed</div>
+              </div>
+              <div class="queue-stat">
+                <div class="value" id="statFailed">0</div>
+                <div class="label">Failed</div>
+              </div>
+            </div>
+          </div>
+          <div class="file-cards" id="fileCards"></div>
+        </div>
+
+        <div class="summary-section" id="summarySection">
+          <h3>✅ Processing Complete!</h3>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="value" id="summaryTotal">0</div>
+              <div class="label">Total Files</div>
+            </div>
+            <div class="summary-card">
+              <div class="value" id="summarySuccess">0</div>
+              <div class="label">Successful</div>
+            </div>
+            <div class="summary-card">
+              <div class="value" id="summaryRecords">0</div>
+              <div class="label">Records Extracted</div>
+            </div>
+            <div class="summary-card">
+              <div class="value" id="summaryTime">0s</div>
+              <div class="label">Total Time</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Debug Panel removed -->
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+      // ============================================
+      // FIXED VERSION - Better Result Parsing
+      // ============================================
+
+      // State Management
+      let selectedFiles = [];
+      let processingJobs = new Map();
+      let allExtractedRecords = [];
+      let isProcessing = false;
+      let globalStartTime = null;
+      // Debug mode removed
+
+      // DOM Elements
+      const uploadZone = document.getElementById("uploadZone");
+      const fileInput = document.getElementById("fileInput");
+      const processBtn = document.getElementById("processBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const downloadAllBtn = document.getElementById("downloadAllBtn");
+      const errorMsg = document.getElementById("errorMsg");
+      const queueSection = document.getElementById("queueSection");
+      const fileCards = document.getElementById("fileCards");
+      const summarySection = document.getElementById("summarySection");
+      const webhookUrlInput = document.getElementById("webhookUrl");
+      const statusUrlInput = document.getElementById("statusUrl");
+      const fileCountBtn = document.getElementById("fileCountBtn");
+      // Debug elements removed
+
+      // Stats Elements
+      const statTotal = document.getElementById("statTotal");
+      const statProcessing = document.getElementById("statProcessing");
+      const statCompleted = document.getElementById("statCompleted");
+      const statFailed = document.getElementById("statFailed");
+      const summaryTotal = document.getElementById("summaryTotal");
+      const summarySuccess = document.getElementById("summarySuccess");
+      const summaryRecords = document.getElementById("summaryRecords");
+      const summaryTime = document.getElementById("summaryTime");
+
+      // Debug helper
+      // Debug helper removed
+
+      // Load saved URLs
+      const savedWebhookUrl = localStorage.getItem("medicalStartUrl");
+      if (savedWebhookUrl) {
+        webhookUrlInput.value = savedWebhookUrl;
+      }
+
+      // Ensure default Start URL if no saved value
+      if (!webhookUrlInput.value) {
+        webhookUrlInput.value = webhookUrlInput.placeholder || '';
+      }
+
+      const savedStatusUrl = localStorage.getItem("medicalStatusUrl");
+      if (savedStatusUrl && statusUrlInput) {
+        statusUrlInput.value = savedStatusUrl;
+      }
+
+      // Ensure default Status URL if empty (use placeholder or derive from start URL)
+      if (statusUrlInput && !statusUrlInput.value) {
+        const placeholder = statusUrlInput.placeholder || '';
+        statusUrlInput.value = placeholder || (webhookUrlInput.value ? webhookUrlInput.value.replace("/medical-start", "/medical-status") : '');
+      }
+
+      // Save URLs on change
+      webhookUrlInput.addEventListener("input", () => {
+        localStorage.setItem("medicalStartUrl", webhookUrlInput.value);
+      });
+
+      if (statusUrlInput) {
+        statusUrlInput.addEventListener("input", () => {
+          localStorage.setItem("medicalStatusUrl", statusUrlInput.value);
+        });
+      }
+
+      // Upload zone interactions
+      uploadZone.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.classList.add("dragover");
+      });
+
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.classList.remove("dragover");
+      });
+
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove("dragover");
+        handleFiles(e.dataTransfer.files);
+      });
+
+      // Handle file selection
+      function handleFiles(files) {
+        const newFiles = Array.from(files).filter((file) =>
+          file.type.startsWith("image/")
+        );
+
+        if (newFiles.length === 0) {
+          showError("Please select image files only (jpg, png, etc.)");
+          return;
+        }
+
+        selectedFiles = [...selectedFiles, ...newFiles];
+        processBtn.disabled = false;
+        fileCountBtn.textContent = selectedFiles.length;
+        showInfo(
+          `Added ${newFiles.length} file(s). Total: ${selectedFiles.length}`
+        );
+      }
+
+      // Process all files
+      processBtn.addEventListener("click", async () => {
+        if (selectedFiles.length === 0) return;
+
+        const startUrl = webhookUrlInput.value.trim();
+
+        if (!startUrl || !isValidUrl(startUrl)) {
+          showError("Please enter a valid Start Webhook URL");
+          return;
+        }
+
+        if (!startUrl.endsWith("/medical-start")) {
+          showError("URL must end with /medical-start");
+          return;
+        }
+
+        let statusUrl = (statusUrlInput.value || "").trim();
+        if (!statusUrl) {
+          statusUrl = startUrl.replace("/medical-start", "/medical-status");
+        }
+
+        if (!isValidUrl(statusUrl)) {
+          showError("Please enter a valid Status Webhook URL");
+          return;
+        }
+
+        if (!statusUrl.endsWith("/medical-status")) {
+          showError("Status URL must end with /medical-status");
+          return;
+        }
+
+        // Initialize processing
+        isProcessing = true;
+        globalStartTime = Date.now();
+        allExtractedRecords = [];
+        processBtn.disabled = true;
+        clearBtn.disabled = true;
+        queueSection.classList.add("active");
+        summarySection.classList.remove("active");
+        downloadAllBtn.classList.remove("active");
+        errorMsg.classList.remove("active");
+
+        // Create job cards
+        fileCards.innerHTML = "";
+        processingJobs.clear();
+
+        for (const file of selectedFiles) {
+          const jobId = `job-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 9)}`;
+          const card = createFileCard(file, jobId);
+          fileCards.appendChild(card);
+
+          processingJobs.set(jobId, {
+            file,
+            jobId,
+            status: "pending",
+            card,
+            startTime: null,
+            result: null,
+            timerInterval: null,
+            n8nJobId: null,
+            pollAttempts: 0,
+            pollStartTime: null,
+          });
+        }
+
+        updateStats();
+
+        // Process all files in parallel
+        const promises = Array.from(processingJobs.entries()).map(
+          ([jobId, job]) => processFile(job, startUrl, statusUrl)
+        );
+
+        await Promise.allSettled(promises);
+
+        isProcessing = false;
+        processBtn.disabled = false;
+        clearBtn.disabled = false;
+      });
+
+      // Clear all
+      clearBtn.addEventListener("click", () => {
+        processingJobs.forEach((job) => {
+          if (job.timerInterval) {
+            clearInterval(job.timerInterval);
+          }
+          if (job.pollTimeoutId) {
+            clearTimeout(job.pollTimeoutId);
+          }
+        });
+
+        selectedFiles = [];
+        processingJobs.clear();
+        allExtractedRecords = [];
+        fileInput.value = "";
+        processBtn.disabled = true;
+        fileCountBtn.textContent = "0";
+        queueSection.classList.remove("active");
+        summarySection.classList.remove("active");
+        downloadAllBtn.classList.remove("active");
+        errorMsg.classList.remove("active");
+        fileCards.innerHTML = "";
+      });
+
+      // Create file card
+      function createFileCard(file, jobId) {
+        const card = document.createElement("div");
+        card.className = "file-card";
+        card.id = `card-${jobId}`;
+
+        const preview = URL.createObjectURL(file);
+        const sizeKB = (file.size / 1024).toFixed(1);
+
+        card.innerHTML = `
+          <div class="file-card-header">
+            <img src="${preview}" alt="${file.name}" class="file-card-preview">
+            <div class="file-card-info">
+              <div class="file-card-name" title="${file.name}">${file.name}</div>
+              <div class="file-card-status">
+                <span class="status-badge pending">Pending</span>
+                <span class="status-message">Waiting to start...</span>
+              </div>
+              <div class="file-card-timer">Size: ${sizeKB} KB</div>
+            </div>
+          </div>
+          <div class="file-card-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">Ready to process</div>
+          </div>
+          <div class="file-card-result"></div>
+        `;
+
+        return card;
+      }
+
+      // ============================================
+      // FIXED: Process file
+      // ============================================
+      async function processFile(job, startUrl, statusUrl) {
+        const { file, jobId, card } = job;
+
+        try {
+          // Step 1: Upload
+          job.status = "uploading";
+          job.startTime = Date.now();
+          updateCardStatus(card, "uploading", "Uploading to server...");
+          updateProgress(card, 5);
+          startTimer(job, card);
+          updateStats();
+          // Debug log removed
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const response = await fetch(startUrl, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          // Try to parse start response robustly (handles empty bodies or wrapped structures)
+          let startData;
+          try {
+            startData = await response.json();
+          } catch (e) {
+            const raw = await response.text();
+            // Fallback: attempt to extract jobId from raw text
+            const match = raw && raw.match(/"jobId"\s*:\s*"([^"]+)"/);
+            startData = match ? { jobId: match[1] } : {};
+          }
+          const n8nJobId = startData.jobId || startData?.data?.jobId || startData?.json?.jobId;
+
+          if (!n8nJobId) {
+            throw new Error("Server did not return a jobId.");
+          }
+
+          job.n8nJobId = n8nJobId;
+          // Debug log removed
+
+          // Step 2: Job started
+          job.status = "processing";
+          job.pollStartTime = Date.now();
+          updateCardStatus(
+            card,
+            "processing",
+            `Processing (Job: ${n8nJobId.slice(0, 12)}...)`
+          );
+          updateProgress(card, 15);
+          updateStats();
+
+          // Step 3: Poll for result
+          await pollForResultAdaptive(job, statusUrl, n8nJobId);
+        } catch (error) {
+          console.error(`Error processing ${file.name}:`, error);
+          // Debug log removed
+          job.status = "error";
+          job.error = error.message;
+          stopTimer(job);
+          updateCardStatus(card, "error", error.message);
+          updateProgress(card, 0);
+          updateStats();
+          checkIfAllDone();
+        }
+      }
+
+      // ============================================
+      // FIXED: Adaptive Polling with Better Result Parsing
+      // ============================================
+      async function pollForResultAdaptive(job, statusUrl, n8nJobId) {
+        const MAX_ATTEMPTS = 60;
+        const IMMEDIATE_CHECK_DELAY = 100; // Initial immediate check delay
+        const FAST_POLL_INTERVAL = 250;    // Fast poll interval
+        const SLOW_POLL_INTERVAL = 1000;   // Slow poll interval
+        const TIMEOUT_MS = 180000;
+
+        const checkStatus = async () => {
+          try {
+            job.pollAttempts++;
+
+            // Check timeout
+            const elapsed = Date.now() - job.pollStartTime;
+            if (elapsed > TIMEOUT_MS) {
+              throw new Error(`Timeout after ${(elapsed / 1000).toFixed(0)}s`);
+            }
+
+            // Calculate adaptive progress
+            const progressPercent = Math.min(15 + job.pollAttempts * 1.2, 90);
+            updateProgress(job.card, progressPercent);
+
+            // Fetch status
+            const response = await fetch(`${statusUrl}?jobId=${n8nJobId}`);
+            if (!response.ok) {
+              throw new Error(`Status check failed: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            // Debug log removed
+
+            if (data.status === "completed") {
+              // SUCCESS!
+              // Debug log removed
+              
+              job.status = "completed";
+              stopTimer(job);
+              // Clear any scheduled polls to avoid stray updates after completion
+              if (job.pollTimeoutId) {
+                clearTimeout(job.pollTimeoutId);
+                job.pollTimeoutId = null;
+              }
+
+              // ============================================
+              // 🔧 FIXED: Better Result Parsing Logic
+              // ============================================
+              let records = [];
+
+              if (data.result) {
+                // Case 1: Excel file (fileBase64 present)
+                if (data.result.fileBase64) {
+                  // Debug log removed
+                  const excelBase64 = data.result.fileBase64;
+                  const arrayBuffer = base64ToArrayBuffer(excelBase64);
+                  records = await parseExcelFile(arrayBuffer);
+                }
+                // Case 2: Direct array of records
+                else if (Array.isArray(data.result)) {
+                  // Debug log removed
+                  records = data.result.map(normalizeRecord);
+                }
+                // Case 3: Single record object with expected fields
+                else if (typeof data.result === "object") {
+                  // Check if this looks like a flattened record (has medical fields)
+                  if (data.result.date_of_payment || data.result.payee || data.result.receipt_number) {
+                    // Debug log removed
+                    records = [normalizeRecord(data.result)];
+                  }
+                  // Otherwise might be a wrapper object
+                  else {
+                    // Debug log removed
+                    // Try common wrapper patterns
+                    if (data.result.items && Array.isArray(data.result.items)) {
+                      records = data.result.items.map(normalizeRecord);
+                    } else if (data.result.records && Array.isArray(data.result.records)) {
+                      records = data.result.records.map(normalizeRecord);
+                    } else if (data.result.data && Array.isArray(data.result.data)) {
+                      records = data.result.data.map(normalizeRecord);
+                    } else {
+                      // Last resort: treat the whole object as a single record
+                      // Debug log removed
+                      records = [normalizeRecord(data.result)];
+                    }
+                  }
+                }
+              }
+
+              // Debug log removed
+              
+              // Validate records have data
+              const validRecords = records.filter(r => 
+                r.date_of_payment || r.payee || r.amount > 0 || r.receipt_number
+              );
+              
+              if (validRecords.length === 0 && records.length > 0) {
+                // Debug log removed
+              }
+
+              job.result = validRecords;
+              updateCardStatus(
+                job.card,
+                "completed",
+                `✅ Extracted ${validRecords.length} record(s)`
+              );
+              updateProgress(job.card, 100);
+              displayResults(job.card, validRecords);
+
+              allExtractedRecords.push(
+                ...validRecords.map((r) => ({ ...r, source_file: job.file.name }))
+              );
+              updateStats();
+              checkIfAllDone();
+              return; // Done!
+            } else if (
+              data.status === "processing" ||
+              data.status === "pending" ||
+              data.status === "not_found"
+            ) {
+              // Still processing - schedule next poll
+              if (job.pollAttempts >= MAX_ATTEMPTS) {
+                throw new Error("Max polling attempts reached");
+              }
+
+              // Adaptive interval
+              const nextInterval =
+                job.pollAttempts <= 10
+                  ? FAST_POLL_INTERVAL
+                  : SLOW_POLL_INTERVAL;
+
+              updateCardStatus(
+                job.card,
+                "processing",
+                `Checking (${job.pollAttempts}/${MAX_ATTEMPTS})...`
+              );
+
+              job.pollTimeoutId = setTimeout(checkStatus, nextInterval);
+            } else if (data.status === "failed") {
+              throw new Error(data.message || "Job failed on server");
+            }
+          } catch (error) {
+            job.status = "error";
+            job.error = error.message;
+            stopTimer(job);
+            updateCardStatus(job.card, "error", error.message);
+            updateProgress(job.card, 0);
+            updateStats();
+            checkIfAllDone();
+          }
+        };
+
+        // Immediate check to avoid UI lag when backend already completed
+        try {
+          await checkStatus();
+        } catch (e) {
+          // If the very first check fails, fall back to scheduled polling
+          // Debug log removed
+        }
+
+        // If still processing, schedule follow-up checks
+        if (job.status === 'processing' || job.status === 'uploading') {
+          job.pollTimeoutId = setTimeout(checkStatus, IMMEDIATE_CHECK_DELAY);
+        } else {
+          // Ensure no stray timers remain once we are done
+          if (job.pollTimeoutId) {
+            clearTimeout(job.pollTimeoutId);
+            job.pollTimeoutId = null;
+          }
+        }
+      }
+
+      // Helper: Convert Base64 to ArrayBuffer
+      function base64ToArrayBuffer(base64) {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+
+      // Check if all jobs done
+      function checkIfAllDone() {
+        const statuses = Array.from(processingJobs.values()).map(
+          (j) => j.status
+        );
+        const isAllDone = statuses.every(
+          (s) => s === "completed" || s === "error"
+        );
+
+        if (isAllDone) {
+          isProcessing = false;
+          processBtn.disabled = false;
+          clearBtn.disabled = false;
+          showSummary();
+
+          if (allExtractedRecords.length > 0) {
+            downloadAllBtn.classList.add("active");
+          }
+        }
+      }
+
+      // Parse Excel file
+      async function parseExcelFile(arrayBuffer) {
+        if (typeof XLSX === "undefined") {
+          throw new Error("Excel library not loaded");
+        }
+
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        
+        // Sheet info logging removed
+        
+        // Try different parsing methods
+        
+        // Method 1: Default (skip header)
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        
+        // Method 2: Include header as first row
+        const rawRowsWithHeader = XLSX.utils.sheet_to_json(sheet, { 
+          header: 1, 
+          defval: "",
+          blankrows: false 
+        });
+        // Method 2 info logging removed
+        
+        // Method 3: Raw cell values
+        const cellA1 = sheet['A1'];
+        const cellA2 = sheet['A2'];
+        
+        // Use the method that works
+        let dataToProcess = [];
+        
+        if (rawRows.length > 0) {
+          // Method 1 worked
+          dataToProcess = rawRows;
+          // Using Method 1
+        } else if (rawRowsWithHeader.length > 1) {
+          // Method 2 worked - need to convert array to objects
+          const headers = rawRowsWithHeader[0];
+          dataToProcess = rawRowsWithHeader.slice(1).map(row => {
+            const obj = {};
+            headers.forEach((header, index) => {
+              obj[header] = row[index] || "";
+            });
+            return obj;
+          });
+          // Using Method 2
+        } else {
+          // No data found in Excel
+          return [];
+        }
+        
+        // Columns/sample logging removed
+
+        const normalized = dataToProcess.map(normalizeRecord);
+        
+        // Validate normalized records
+        const validRecords = normalized.filter(r => 
+          r.date_of_payment || r.payee || r.amount > 0 || r.receipt_number !== "N/A"
+        );
+        
+        // Validation logging removed
+
+        return validRecords;
+      }
+
+      // ============================================
+      // Improved Normalize Record
+      // ============================================
+      function normalizeRecord(row) {
+        // Helper to safely get string value
+        const getString = (val) => String(val || "").trim();
+        const getNumber = (val) => {
+          const num = parseFloat(val);
+          return isNaN(num) ? 0 : num;
+        };
+
+        // First, try exact field match (case-sensitive)
+        if (row.date_of_payment !== undefined || 
+            row.payee !== undefined || 
+            row.receipt_number !== undefined) {
+          return {
+            date_of_payment: getString(row.date_of_payment),
+            payee: getString(row.payee),
+            department_remarks: getString(row.department_remarks),
+            receipt_number: getString(row.receipt_number).replace(/^empty$/i, "N/A") || "N/A",
+            amount: getNumber(row.amount),
+          };
+        }
+
+        // Create lowercase map for fuzzy matching
+        const lowerMap = {};
+        for (const [key, value] of Object.entries(row)) {
+          const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
+          lowerMap[normalizedKey] = value;
+        }
+
+        // Try to find fields with flexible matching
+        const findField = (possibleNames) => {
+          for (const name of possibleNames) {
+            // Exact match
+            if (lowerMap[name] !== undefined) {
+              return lowerMap[name];
+            }
+            // Partial match
+            for (const key in lowerMap) {
+              if (key.includes(name) || name.includes(key)) {
+                return lowerMap[key];
+              }
+            }
+          }
+          return "";
+        };
+
+        const result = {
+          date_of_payment: getString(findField([
+            'date_of_payment', 
+            'date', 
+            'payment_date',
+            'dateofpayment'
+          ])),
+          payee: getString(findField([
+            'payee', 
+            'payer', 
+            'provider', 
+            'hospital',
+            'clinic'
+          ])),
+          department_remarks: getString(findField([
+            'department_remarks',
+            'remarks',
+            'department',
+            'services',
+            'details',
+            'description'
+          ])),
+          receipt_number: getString(findField([
+            'receipt_number',
+            'receipt',
+            'invoice',
+            'number',
+            'receipt_no',
+            'receiptnumber'
+          ])).replace(/^empty$/i, "N/A") || "N/A",
+          amount: getNumber(findField([
+            'amount',
+            'total',
+            'sum',
+            'price',
+            'cost'
+          ])),
+        };
+
+        return result;
+      }
+
+      // Update card status
+      function updateCardStatus(card, status, message) {
+        card.className = `file-card ${status}`;
+        const badge = card.querySelector(".status-badge");
+        const statusMessage = card.querySelector(".status-message");
+
+        badge.className = `status-badge ${status}`;
+        badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        statusMessage.textContent = message;
+      }
+
+      // Update progress bar
+      function updateProgress(card, percent) {
+        const fill = card.querySelector(".progress-fill");
+        const text = card.querySelector(".progress-text");
+
+        if (percent === "indeterminate") {
+          fill.classList.add("indeterminate");
+          fill.style.width = "";
+          text.textContent = "Processing...";
+        } else {
+          fill.classList.remove("indeterminate");
+          fill.style.width = `${percent}%`;
+          if (percent === 100) {
+            text.textContent = "100% complete";
+          } else if (percent > 15) {
+            text.textContent = `Processing (${percent.toFixed(0)}%)...`;
+          } else {
+            text.textContent = "Starting...";
+          }
+        }
+      }
+
+      // Start timer
+      function startTimer(job, card) {
+        const timerEl = card.querySelector(".file-card-timer");
+        job.timerInterval = setInterval(() => {
+          if (job.startTime) {
+            const elapsed = ((Date.now() - job.startTime) / 1000).toFixed(1);
+            timerEl.textContent = `⏱️ ${elapsed}s`;
+          }
+        }, 100);
+      }
+
+      // Stop timer
+      function stopTimer(job) {
+        if (job.timerInterval) {
+          clearInterval(job.timerInterval);
+          job.timerInterval = null;
+        }
+      }
+
+      // Display results in card
+      function displayResults(card, records) {
+        const resultDiv = card.querySelector(".file-card-result");
+
+        if (records.length === 0) {
+          resultDiv.innerHTML =
+            '<div class="no-results">No records extracted</div>';
+        } else {
+          const fileNameEl = card.querySelector('.file-card-name');
+          const originalFileName = (fileNameEl?.getAttribute('title') || fileNameEl?.textContent || '').trim();
+          const baseName = originalFileName.replace(/\.[^/.]+$/, '');
+          const safeBaseName = baseName.replace(/[^\w\-]+/g, '_');
+
+          let tableHtml = '<div class="card-tools">\n' +
+            '<button class="btn-download-card" type="button">📥 Download Excel</button>' +
+            '</div>';
+          tableHtml += '<table class="result-table"><thead><tr>';
+          tableHtml +=
+            "<th>Date</th><th>Payee</th><th>Remarks</th><th>Receipt#</th><th>Amount</th>";
+          tableHtml += "</tr></thead><tbody>";
+
+          records.forEach((record) => {
+            tableHtml += `
+              <tr>
+                <td>${record.date_of_payment || "N/A"}</td>
+                <td>${record.payee || "N/A"}</td>
+                <td>${record.department_remarks || "N/A"}</td>
+                <td>${record.receipt_number || "N/A"}</td>
+                <td>${(record.amount || 0).toFixed(2)}</td>
+              </tr>
+            `;
+          });
+
+          tableHtml += "</tbody></table>";
+          resultDiv.innerHTML = tableHtml;
+
+          // Bind per-card Excel download
+          const btn = resultDiv.querySelector('.btn-download-card');
+          if (btn) {
+            btn.addEventListener('click', () => {
+              try {
+                if (typeof XLSX === 'undefined') {
+                  showError('Excel library not loaded. Please refresh and try again.');
+                  return;
+                }
+
+                const exportRows = records.map(r => ({
+                  date_of_payment: r.date_of_payment || 'N/A',
+                  payee: r.payee || 'N/A',
+                  department_remarks: r.department_remarks || 'N/A',
+                  receipt_number: r.receipt_number || 'N/A',
+                  amount: typeof r.amount === 'number' ? r.amount : Number(r.amount) || 0,
+                  source_file: originalFileName || ''
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(exportRows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Medical Receipts');
+
+                const timestamp = new Date().toISOString().slice(0,19).replace(/:/g,'-');
+                const filename = `Medical_${safeBaseName}_${timestamp}.xlsx`;
+
+                XLSX.writeFile(wb, filename);
+                showInfo(`Downloaded ${exportRows.length} rows from ${originalFileName}`);
+              } catch (err) {
+                showError(`Download failed: ${err.message}`);
+              }
+            });
+          }
+        }
+
+        resultDiv.classList.add("active");
+      }
+
+      // Update stats
+      function updateStats() {
+        let processing = 0;
+        let completed = 0;
+        let failed = 0;
+
+        processingJobs.forEach((job) => {
+          if (job.status === "processing" || job.status === "uploading") {
+            processing++;
+          } else if (job.status === "completed") {
+            completed++;
+          } else if (job.status === "error") {
+            failed++;
+          }
+        });
+
+        statTotal.textContent = processingJobs.size;
+        statProcessing.textContent = processing;
+        statCompleted.textContent = completed;
+        statFailed.textContent = failed;
+      }
+
+      // Show summary
+      function showSummary() {
+        const totalTime = ((Date.now() - globalStartTime) / 1000).toFixed(1);
+        let successCount = 0;
+        let totalRecords = 0;
+
+        processingJobs.forEach((job) => {
+          if (job.status === "completed") {
+            successCount++;
+            totalRecords += job.result ? job.result.length : 0;
+          }
+        });
+
+        summaryTotal.textContent = processingJobs.size;
+        summarySuccess.textContent = successCount;
+        summaryRecords.textContent = totalRecords;
+        summaryTime.textContent = `${totalTime}s`;
+
+        summarySection.classList.add("active");
+      }
+
+      // Download all results as Excel
+      downloadAllBtn.addEventListener("click", () => {
+        if (allExtractedRecords.length === 0) {
+          showError("No records to download");
+          return;
+        }
+
+        if (typeof XLSX === "undefined") {
+          showError("Excel library not loaded. Please refresh and try again.");
+          return;
+        }
+
+        try {
+          const worksheet = XLSX.utils.json_to_sheet(allExtractedRecords);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Medical Receipts");
+
+          const timestamp = new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace(/:/g, "-");
+          const filename = `Medical_Receipts_${timestamp}.xlsx`;
+
+          XLSX.writeFile(workbook, filename);
+          showInfo(
+            `Downloaded ${allExtractedRecords.length} records to ${filename}`
+          );
+        } catch (error) {
+          showError(`Download failed: ${error.message}`);
+        }
+      });
+
+      // Show error
+      function showError(message) {
+        errorMsg.textContent = `❌ ${message}`;
+        errorMsg.classList.add("active");
+        errorMsg.style.background = "#ff4757";
+        setTimeout(() => errorMsg.classList.remove("active"), 5000);
+      }
+
+      // Show info
+      function showInfo(message) {
+        errorMsg.textContent = `ℹ️ ${message}`;
+        errorMsg.classList.add("active");
+        errorMsg.style.background = "#2ecc71";
+        setTimeout(() => errorMsg.classList.remove("active"), 3000);
+      }
+
+      // URL validation
+      function isValidUrl(string) {
+        try {
+          const url = new URL(string);
+          return url.protocol === "http:" || url.protocol === "https:";
+        } catch (_) {
+          return false;
+        }
+      }
+
+      // Debug mode toggle removed
+    </script>
+  </body>
+</html>
