@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Medical Receipt Scanner - Fixed</title>
+    <title>Medical Receipt Scanner - Streaming Results</title>
     <style>
       * {
         margin: 0;
@@ -55,7 +55,6 @@
         border-radius: 15px;
         padding: 1.5rem;
         margin-bottom: 2rem;
-        display: none;
       }
 
       .config-section h3 {
@@ -69,6 +68,45 @@
         align-items: center;
         gap: 1rem;
         flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+
+      /* Toggle tools for config section */
+      .config-tools {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .btn-config-toggle {
+        background: #f1f5f9;
+        color: #333;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        border: 1px solid #e0e6ff;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .btn-config-toggle:hover {
+        background: #e2e8f0;
+      }
+
+      .config-note {
+        font-size: 0.85rem;
+        color: #666;
+      }
+
+      /* Hide config items when collapsed */
+      .config-section.hidden-items .config-item {
+        display: none !important;
+      }
+      /* Hide the entire configuration section */
+      .config-section.hidden-all {
+        display: none !important;
       }
 
       .config-item label {
@@ -176,12 +214,41 @@
         margin-top: 0.25rem;
       }
 
-      /* File Cards Grid */
+      /* File Cards - Grid layout for processing */
       .file-cards {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
         gap: 1.5rem;
         margin-top: 1rem;
+      }
+
+      /* Completed Results - Stack layout (newest first) */
+      .completed-section {
+        margin-top: 2rem;
+        display: none;
+      }
+
+      .completed-section.active {
+        display: block;
+      }
+
+      .completed-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #d1fae5;
+      }
+
+      .completed-header h3 {
+        color: #10b981;
+        font-size: 1.4rem;
+      }
+
+      .completed-cards {
+        display: grid;
+        gap: 1rem;
       }
 
       .file-card {
@@ -190,6 +257,18 @@
         border-radius: 15px;
         overflow: hidden;
         transition: all 0.3s ease;
+        animation: slideIn 0.4s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       .file-card:hover {
@@ -205,6 +284,12 @@
       .file-card.completed {
         border-color: #2ecc71;
         box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1);
+        animation: completePulse 0.6s ease;
+      }
+
+      @keyframes completePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
       }
 
       .file-card.error {
@@ -295,6 +380,13 @@
         font-size: 0.8rem;
         color: #999;
         font-family: "Courier New", monospace;
+      }
+
+      .completion-time {
+        font-size: 0.75rem;
+        color: #10b981;
+        font-weight: 600;
+        margin-top: 0.25rem;
       }
 
       /* Progress Bar */
@@ -403,10 +495,15 @@
         padding: 0.5rem 0.9rem;
         font-size: 0.85rem;
         border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
       }
 
       .btn-download-card:hover {
         background: #27ae60;
+        transform: translateY(-1px);
       }
 
       /* Buttons */
@@ -510,37 +607,43 @@
         font-size: 0.85rem;
       }
 
-      /* Error Message */
-      .error {
-        background: #ff4757;
-        color: white;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
+      /* Notification */
+      .notification {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         display: none;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 1000;
+        animation: slideInRight 0.3s ease;
       }
 
-      .error.active {
-        display: block;
-      }
-
-      /* Debug Panel removed */
-
-      /* Spinner */
-      .spinner {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: currentColor;
-        border-radius: 50%;
-        animation: spin 0.6s linear infinite;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
+      @keyframes slideInRight {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
         }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .notification.show {
+        display: flex;
+      }
+
+      .notification.success {
+        border-left: 4px solid #10b981;
+      }
+
+      .notification.error {
+        border-left: 4px solid #ef4444;
       }
 
       /* Responsive */
@@ -582,12 +685,16 @@
     <div class="container">
       <div class="header">
         <h1>🏥 Medical Receipt Scanner</h1>
-        <p>⚡ Fixed Version - Immediate Response Detection</p>
+        <p>⚡ Streaming Results - Show completed first!</p>
       </div>
 
       <div class="content">
         <div class="config-section">
           <h3>⚙️ Configuration</h3>
+          <div class="config-tools">
+            <button id="toggleConfigBtn" class="btn-config-toggle">👁️ Ẩn/Hiện URL</button>
+            <div id="configNote" class="config-note"></div>
+          </div>
           <div class="config-item">
             <label for="webhookUrl">N8N Start URL:</label>
             <input
@@ -597,8 +704,8 @@
               value=""
             />
           </div>
-          <div class="config-item" style="margin-top: 0.75rem">
-            <label for="statusUrl">N8N Status URL (optional):</label>
+          <div class="config-item">
+            <label for="statusUrl">N8N Status URL:</label>
             <input
               type="url"
               id="statusUrl"
@@ -613,7 +720,7 @@
           <h3>Click to upload or drag and drop</h3>
           <p>Supports: JPG, PNG, JPEG (multiple files allowed)</p>
           <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem">
-            🔧 <strong>Fixed:</strong> Improved result parsing + Faster status detection
+            ✨ <strong>NEW:</strong> Results appear as soon as they're ready!
           </p>
           <input type="file" id="fileInput" accept="image/*" multiple />
         </div>
@@ -628,11 +735,19 @@
           </button>
         </div>
 
-        <div class="error" id="errorMsg"></div>
+        <!-- Completed Results Section (Shows first, newest on top) -->
+        <div class="completed-section" id="completedSection">
+          <div class="completed-header">
+            <h3>✅ Completed (<span id="completedCount">0</span>)</h3>
+            <div style="font-size: 0.9rem; opacity: 0.8;">Most recent first</div>
+          </div>
+          <div class="completed-cards" id="completedCards"></div>
+        </div>
 
+        <!-- Processing Queue -->
         <div class="queue-section" id="queueSection">
           <div class="queue-header">
-            <h3>📊 Processing Status</h3>
+            <h3>⏳ Processing Queue</h3>
             <div class="queue-stats">
               <div class="queue-stat">
                 <div class="value" id="statTotal">0</div>
@@ -656,7 +771,7 @@
         </div>
 
         <div class="summary-section" id="summarySection">
-          <h3>✅ Processing Complete!</h3>
+          <h3>📊 Final Summary</h3>
           <div class="summary-grid">
             <div class="summary-card">
               <div class="value" id="summaryTotal">0</div>
@@ -676,25 +791,24 @@
             </div>
           </div>
         </div>
-
-        <!-- Debug Panel removed -->
       </div>
+    </div>
+
+    <div class="notification" id="notification">
+      <span id="notificationIcon"></span>
+      <span id="notificationText"></span>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
-      // ============================================
-      // FIXED VERSION - Better Result Parsing
-      // ============================================
-
       // State Management
       let selectedFiles = [];
       let processingJobs = new Map();
+      let completedJobs = [];
       let allExtractedRecords = [];
       let isProcessing = false;
       let globalStartTime = null;
-      // Debug mode removed
 
       // DOM Elements
       const uploadZone = document.getElementById("uploadZone");
@@ -702,14 +816,18 @@
       const processBtn = document.getElementById("processBtn");
       const clearBtn = document.getElementById("clearBtn");
       const downloadAllBtn = document.getElementById("downloadAllBtn");
-      const errorMsg = document.getElementById("errorMsg");
       const queueSection = document.getElementById("queueSection");
+      const completedSection = document.getElementById("completedSection");
       const fileCards = document.getElementById("fileCards");
+      const completedCards = document.getElementById("completedCards");
       const summarySection = document.getElementById("summarySection");
       const webhookUrlInput = document.getElementById("webhookUrl");
       const statusUrlInput = document.getElementById("statusUrl");
       const fileCountBtn = document.getElementById("fileCountBtn");
-      // Debug elements removed
+      const completedCount = document.getElementById("completedCount");
+      const toggleConfigBtn = document.getElementById("toggleConfigBtn");
+      const configSectionEl = document.querySelector(".config-section");
+      const configNoteEl = document.getElementById("configNote");
 
       // Stats Elements
       const statTotal = document.getElementById("statTotal");
@@ -721,16 +839,11 @@
       const summaryRecords = document.getElementById("summaryRecords");
       const summaryTime = document.getElementById("summaryTime");
 
-      // Debug helper
-      // Debug helper removed
-
       // Load saved URLs
       const savedWebhookUrl = localStorage.getItem("medicalStartUrl");
       if (savedWebhookUrl) {
         webhookUrlInput.value = savedWebhookUrl;
       }
-
-      // Ensure default Start URL if no saved value
       if (!webhookUrlInput.value) {
         webhookUrlInput.value = webhookUrlInput.placeholder || '';
       }
@@ -739,11 +852,14 @@
       if (savedStatusUrl && statusUrlInput) {
         statusUrlInput.value = savedStatusUrl;
       }
-
-      // Ensure default Status URL if empty (use placeholder or derive from start URL)
       if (statusUrlInput && !statusUrlInput.value) {
         const placeholder = statusUrlInput.placeholder || '';
         statusUrlInput.value = placeholder || (webhookUrlInput.value ? webhookUrlInput.value.replace("/medical-start", "/medical-status") : '');
+      }
+
+      // Ẩn toàn bộ phần Cấu hình mặc định
+      if (configSectionEl) {
+        configSectionEl.classList.add("hidden-all");
       }
 
       // Save URLs on change
@@ -783,16 +899,14 @@
         );
 
         if (newFiles.length === 0) {
-          showError("Please select image files only (jpg, png, etc.)");
+          showNotification("Please select image files only", "error");
           return;
         }
 
         selectedFiles = [...selectedFiles, ...newFiles];
         processBtn.disabled = false;
         fileCountBtn.textContent = selectedFiles.length;
-        showInfo(
-          `Added ${newFiles.length} file(s). Total: ${selectedFiles.length}`
-        );
+        showNotification(`Added ${newFiles.length} file(s)`, "success");
       }
 
       // Process all files
@@ -802,12 +916,12 @@
         const startUrl = webhookUrlInput.value.trim();
 
         if (!startUrl || !isValidUrl(startUrl)) {
-          showError("Please enter a valid Start Webhook URL");
+          showNotification("Please enter a valid Start Webhook URL", "error");
           return;
         }
 
         if (!startUrl.endsWith("/medical-start")) {
-          showError("URL must end with /medical-start");
+          showNotification("URL must end with /medical-start", "error");
           return;
         }
 
@@ -817,12 +931,12 @@
         }
 
         if (!isValidUrl(statusUrl)) {
-          showError("Please enter a valid Status Webhook URL");
+          showNotification("Please enter a valid Status Webhook URL", "error");
           return;
         }
 
         if (!statusUrl.endsWith("/medical-status")) {
-          showError("Status URL must end with /medical-status");
+          showNotification("Status URL must end with /medical-status", "error");
           return;
         }
 
@@ -830,15 +944,17 @@
         isProcessing = true;
         globalStartTime = Date.now();
         allExtractedRecords = [];
+        completedJobs = [];
         processBtn.disabled = true;
         clearBtn.disabled = true;
         queueSection.classList.add("active");
+        completedSection.classList.remove("active");
         summarySection.classList.remove("active");
         downloadAllBtn.classList.remove("active");
-        errorMsg.classList.remove("active");
 
         // Create job cards
         fileCards.innerHTML = "";
+        completedCards.innerHTML = "";
         processingJobs.clear();
 
         for (const file of selectedFiles) {
@@ -859,6 +975,7 @@
             n8nJobId: null,
             pollAttempts: 0,
             pollStartTime: null,
+            completionTime: null,
           });
         }
 
@@ -889,15 +1006,18 @@
 
         selectedFiles = [];
         processingJobs.clear();
+        completedJobs = [];
         allExtractedRecords = [];
         fileInput.value = "";
         processBtn.disabled = true;
         fileCountBtn.textContent = "0";
+        completedCount.textContent = "0";
         queueSection.classList.remove("active");
+        completedSection.classList.remove("active");
         summarySection.classList.remove("active");
         downloadAllBtn.classList.remove("active");
-        errorMsg.classList.remove("active");
         fileCards.innerHTML = "";
+        completedCards.innerHTML = "";
       });
 
       // Create file card
@@ -933,9 +1053,7 @@
         return card;
       }
 
-      // ============================================
-      // FIXED: Process file
-      // ============================================
+      // Process single file
       async function processFile(job, startUrl, statusUrl) {
         const { file, jobId, card } = job;
 
@@ -947,7 +1065,6 @@
           updateProgress(card, 5);
           startTimer(job, card);
           updateStats();
-          // Debug log removed
 
           const formData = new FormData();
           formData.append("file", file);
@@ -961,13 +1078,11 @@
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
 
-          // Try to parse start response robustly (handles empty bodies or wrapped structures)
           let startData;
           try {
             startData = await response.json();
           } catch (e) {
             const raw = await response.text();
-            // Fallback: attempt to extract jobId from raw text
             const match = raw && raw.match(/"jobId"\s*:\s*"([^"]+)"/);
             startData = match ? { jobId: match[1] } : {};
           }
@@ -978,7 +1093,6 @@
           }
 
           job.n8nJobId = n8nJobId;
-          // Debug log removed
 
           // Step 2: Job started
           job.status = "processing";
@@ -995,7 +1109,6 @@
           await pollForResultAdaptive(job, statusUrl, n8nJobId);
         } catch (error) {
           console.error(`Error processing ${file.name}:`, error);
-          // Debug log removed
           job.status = "error";
           job.error = error.message;
           stopTimer(job);
@@ -1006,80 +1119,59 @@
         }
       }
 
-      // ============================================
-      // FIXED: Adaptive Polling with Better Result Parsing
-      // ============================================
+      // Adaptive Polling
       async function pollForResultAdaptive(job, statusUrl, n8nJobId) {
         const MAX_ATTEMPTS = 60;
-        const IMMEDIATE_CHECK_DELAY = 100; // Initial immediate check delay
-        const FAST_POLL_INTERVAL = 250;    // Fast poll interval
-        const SLOW_POLL_INTERVAL = 1000;   // Slow poll interval
+        const IMMEDIATE_CHECK_DELAY = 100;
+        const FAST_POLL_INTERVAL = 250;
+        const SLOW_POLL_INTERVAL = 1000;
         const TIMEOUT_MS = 180000;
 
         const checkStatus = async () => {
           try {
             job.pollAttempts++;
 
-            // Check timeout
             const elapsed = Date.now() - job.pollStartTime;
             if (elapsed > TIMEOUT_MS) {
               throw new Error(`Timeout after ${(elapsed / 1000).toFixed(0)}s`);
             }
 
-            // Calculate adaptive progress
             const progressPercent = Math.min(15 + job.pollAttempts * 1.2, 90);
             updateProgress(job.card, progressPercent);
 
-            // Fetch status
             const response = await fetch(`${statusUrl}?jobId=${n8nJobId}`);
             if (!response.ok) {
               throw new Error(`Status check failed: ${response.statusText}`);
             }
 
             const data = await response.json();
-            // Debug log removed
 
             if (data.status === "completed") {
-              // SUCCESS!
-              // Debug log removed
-              
               job.status = "completed";
+              job.completionTime = Date.now();
               stopTimer(job);
-              // Clear any scheduled polls to avoid stray updates after completion
+              
               if (job.pollTimeoutId) {
                 clearTimeout(job.pollTimeoutId);
                 job.pollTimeoutId = null;
               }
 
-              // ============================================
-              // 🔧 FIXED: Better Result Parsing Logic
-              // ============================================
               let records = [];
 
               if (data.result) {
-                // Case 1: Excel file (fileBase64 present)
                 if (data.result.fileBase64) {
-                  // Debug log removed
                   const excelBase64 = data.result.fileBase64;
                   const arrayBuffer = base64ToArrayBuffer(excelBase64);
                   records = await parseExcelFile(arrayBuffer);
                 }
-                // Case 2: Direct array of records
                 else if (Array.isArray(data.result)) {
-                  // Debug log removed
                   records = data.result.map(normalizeRecord);
                 }
-                // Case 3: Single record object with expected fields
                 else if (typeof data.result === "object") {
-                  // Check if this looks like a flattened record (has medical fields)
                   if (data.result.date_of_payment || data.result.payee || data.result.receipt_number) {
-                    // Debug log removed
                     records = [normalizeRecord(data.result)];
                   }
-                  // Otherwise might be a wrapper object
                   else {
-                    // Debug log removed
-                    // Try common wrapper patterns
                     if (data.result.items && Array.isArray(data.result.items)) {
                       records = data.result.items.map(normalizeRecord);
                     } else if (data.result.records && Array.isArray(data.result.records)) {
@@ -1087,24 +1179,15 @@
                     } else if (data.result.data && Array.isArray(data.result.data)) {
                       records = data.result.data.map(normalizeRecord);
                     } else {
-                      // Last resort: treat the whole object as a single record
-                      // Debug log removed
                       records = [normalizeRecord(data.result)];
                     }
                   }
                 }
               }
 
-              // Debug log removed
-              
-              // Validate records have data
               const validRecords = records.filter(r => 
                 r.date_of_payment || r.payee || r.amount > 0 || r.receipt_number
               );
-              
-              if (validRecords.length === 0 && records.length > 0) {
-                // Debug log removed
-              }
 
               job.result = validRecords;
               updateCardStatus(
@@ -1113,25 +1196,25 @@
                 `✅ Extracted ${validRecords.length} record(s)`
               );
               updateProgress(job.card, 100);
-              displayResults(job.card, validRecords);
+
+              // ⭐ KEY FEATURE: Move to completed section immediately
+              moveToCompletedSection(job);
 
               allExtractedRecords.push(
                 ...validRecords.map((r) => ({ ...r, source_file: job.file.name }))
               );
               updateStats();
               checkIfAllDone();
-              return; // Done!
+              return;
             } else if (
               data.status === "processing" ||
               data.status === "pending" ||
               data.status === "not_found"
             ) {
-              // Still processing - schedule next poll
               if (job.pollAttempts >= MAX_ATTEMPTS) {
                 throw new Error("Max polling attempts reached");
               }
 
-              // Adaptive interval
               const nextInterval =
                 job.pollAttempts <= 10
                   ? FAST_POLL_INTERVAL
@@ -1158,24 +1241,51 @@
           }
         };
 
-        // Immediate check to avoid UI lag when backend already completed
         try {
           await checkStatus();
         } catch (e) {
-          // If the very first check fails, fall back to scheduled polling
-          // Debug log removed
+          // Fallback to scheduled polling
         }
 
-        // If still processing, schedule follow-up checks
         if (job.status === 'processing' || job.status === 'uploading') {
           job.pollTimeoutId = setTimeout(checkStatus, IMMEDIATE_CHECK_DELAY);
         } else {
-          // Ensure no stray timers remain once we are done
           if (job.pollTimeoutId) {
             clearTimeout(job.pollTimeoutId);
             job.pollTimeoutId = null;
           }
         }
+      }
+
+      // ⭐ NEW: Move completed card to completed section
+      function moveToCompletedSection(job) {
+        const card = job.card;
+        
+        // Remove from processing grid
+        if (card.parentElement === fileCards) {
+          fileCards.removeChild(card);
+        }
+
+        // Add completion timestamp
+        const timerEl = card.querySelector(".file-card-timer");
+        if (timerEl && job.completionTime && job.startTime) {
+          const duration = ((job.completionTime - job.startTime) / 1000).toFixed(1);
+          timerEl.innerHTML = `⏱️ ${duration}s <span class="completion-time">✓ Just completed</span>`;
+        }
+
+        // Display results in card
+        displayResults(card, job.result, job.file.name);
+
+        // Insert at the TOP of completed section (newest first)
+        completedCards.insertBefore(card, completedCards.firstChild);
+        
+        // Show completed section
+        completedSection.classList.add("active");
+        completedJobs.push(job);
+        completedCount.textContent = completedJobs.length;
+
+        // Show notification
+        showNotification(`✅ ${job.file.name} completed!`, "success");
       }
 
       // Helper: Convert Base64 to ArrayBuffer
@@ -1219,35 +1329,19 @@
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        
-        // Sheet info logging removed
-        
-        // Try different parsing methods
-        
-        // Method 1: Default (skip header)
+
         const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-        
-        // Method 2: Include header as first row
         const rawRowsWithHeader = XLSX.utils.sheet_to_json(sheet, { 
           header: 1, 
           defval: "",
           blankrows: false 
         });
-        // Method 2 info logging removed
-        
-        // Method 3: Raw cell values
-        const cellA1 = sheet['A1'];
-        const cellA2 = sheet['A2'];
-        
-        // Use the method that works
+
         let dataToProcess = [];
         
         if (rawRows.length > 0) {
-          // Method 1 worked
           dataToProcess = rawRows;
-          // Using Method 1
         } else if (rawRowsWithHeader.length > 1) {
-          // Method 2 worked - need to convert array to objects
           const headers = rawRowsWithHeader[0];
           dataToProcess = rawRowsWithHeader.slice(1).map(row => {
             const obj = {};
@@ -1256,38 +1350,27 @@
             });
             return obj;
           });
-          // Using Method 2
         } else {
-          // No data found in Excel
           return [];
         }
-        
-        // Columns/sample logging removed
 
         const normalized = dataToProcess.map(normalizeRecord);
         
-        // Validate normalized records
         const validRecords = normalized.filter(r => 
           r.date_of_payment || r.payee || r.amount > 0 || r.receipt_number !== "N/A"
         );
-        
-        // Validation logging removed
 
         return validRecords;
       }
 
-      // ============================================
-      // Improved Normalize Record
-      // ============================================
+      // Normalize Record
       function normalizeRecord(row) {
-        // Helper to safely get string value
         const getString = (val) => String(val || "").trim();
         const getNumber = (val) => {
           const num = parseFloat(val);
           return isNaN(num) ? 0 : num;
         };
 
-        // First, try exact field match (case-sensitive)
         if (row.date_of_payment !== undefined || 
             row.payee !== undefined || 
             row.receipt_number !== undefined) {
@@ -1300,21 +1383,17 @@
           };
         }
 
-        // Create lowercase map for fuzzy matching
         const lowerMap = {};
         for (const [key, value] of Object.entries(row)) {
           const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
           lowerMap[normalizedKey] = value;
         }
 
-        // Try to find fields with flexible matching
         const findField = (possibleNames) => {
           for (const name of possibleNames) {
-            // Exact match
             if (lowerMap[name] !== undefined) {
               return lowerMap[name];
             }
-            // Partial match
             for (const key in lowerMap) {
               if (key.includes(name) || name.includes(key)) {
                 return lowerMap[key];
@@ -1419,16 +1498,14 @@
       }
 
       // Display results in card
-      function displayResults(card, records) {
+      function displayResults(card, records, fileName) {
         const resultDiv = card.querySelector(".file-card-result");
 
         if (records.length === 0) {
           resultDiv.innerHTML =
             '<div class="no-results">No records extracted</div>';
         } else {
-          const fileNameEl = card.querySelector('.file-card-name');
-          const originalFileName = (fileNameEl?.getAttribute('title') || fileNameEl?.textContent || '').trim();
-          const baseName = originalFileName.replace(/\.[^/.]+$/, '');
+          const baseName = fileName.replace(/\.[^/.]+$/, '');
           const safeBaseName = baseName.replace(/[^\w\-]+/g, '_');
 
           let tableHtml = '<div class="card-tools">\n' +
@@ -1454,13 +1531,12 @@
           tableHtml += "</tbody></table>";
           resultDiv.innerHTML = tableHtml;
 
-          // Bind per-card Excel download
           const btn = resultDiv.querySelector('.btn-download-card');
           if (btn) {
             btn.addEventListener('click', () => {
               try {
                 if (typeof XLSX === 'undefined') {
-                  showError('Excel library not loaded. Please refresh and try again.');
+                  showNotification('Excel library not loaded', 'error');
                   return;
                 }
 
@@ -1470,7 +1546,7 @@
                   department_remarks: r.department_remarks || 'N/A',
                   receipt_number: r.receipt_number || 'N/A',
                   amount: typeof r.amount === 'number' ? r.amount : Number(r.amount) || 0,
-                  source_file: originalFileName || ''
+                  source_file: fileName || ''
                 }));
 
                 const ws = XLSX.utils.json_to_sheet(exportRows);
@@ -1481,9 +1557,9 @@
                 const filename = `Medical_${safeBaseName}_${timestamp}.xlsx`;
 
                 XLSX.writeFile(wb, filename);
-                showInfo(`Downloaded ${exportRows.length} rows from ${originalFileName}`);
+                showNotification(`Downloaded ${exportRows.length} rows`, 'success');
               } catch (err) {
-                showError(`Download failed: ${err.message}`);
+                showNotification(`Download failed: ${err.message}`, 'error');
               }
             });
           }
@@ -1538,12 +1614,12 @@
       // Download all results as Excel
       downloadAllBtn.addEventListener("click", () => {
         if (allExtractedRecords.length === 0) {
-          showError("No records to download");
+          showNotification("No records to download", "error");
           return;
         }
 
         if (typeof XLSX === "undefined") {
-          showError("Excel library not loaded. Please refresh and try again.");
+          showNotification("Excel library not loaded", "error");
           return;
         }
 
@@ -1559,28 +1635,29 @@
           const filename = `Medical_Receipts_${timestamp}.xlsx`;
 
           XLSX.writeFile(workbook, filename);
-          showInfo(
-            `Downloaded ${allExtractedRecords.length} records to ${filename}`
+          showNotification(
+            `Downloaded ${allExtractedRecords.length} records`,
+            "success"
           );
         } catch (error) {
-          showError(`Download failed: ${error.message}`);
+          showNotification(`Download failed: ${error.message}`, "error");
         }
       });
 
-      // Show error
-      function showError(message) {
-        errorMsg.textContent = `❌ ${message}`;
-        errorMsg.classList.add("active");
-        errorMsg.style.background = "#ff4757";
-        setTimeout(() => errorMsg.classList.remove("active"), 5000);
-      }
+      // Show notification
+      function showNotification(message, type) {
+        const notification = document.getElementById('notification');
+        const icon = document.getElementById('notificationIcon');
+        const text = document.getElementById('notificationText');
 
-      // Show info
-      function showInfo(message) {
-        errorMsg.textContent = `ℹ️ ${message}`;
-        errorMsg.classList.add("active");
-        errorMsg.style.background = "#2ecc71";
-        setTimeout(() => errorMsg.classList.remove("active"), 3000);
+        icon.textContent = type === 'success' ? '✅' : '❌';
+        text.textContent = message;
+        
+        notification.className = `notification ${type} show`;
+        
+        setTimeout(() => {
+          notification.classList.remove('show');
+        }, 3000);
       }
 
       // URL validation
@@ -1592,8 +1669,6 @@
           return false;
         }
       }
-
-      // Debug mode toggle removed
     </script>
   </body>
 </html>
